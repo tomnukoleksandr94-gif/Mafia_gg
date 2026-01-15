@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROULETTE: FINAL REPORT</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Orbitron:wght@500;900&display=swap');
+
+        :root {
+            --bg-dark: #050500;
+            --gold: #ffcc00;
+            --deep-gold: #4a3c00;
+            --gold-shadow: rgba(255, 204, 0, 0.2);
+        }
+
+        * { box-sizing: border-box; }
+        body { 
+            background: var(--bg-dark); 
+            color: #fff; 
+            font-family: 'Orbitron', sans-serif; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden;
+        }
+
+        #result-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            background: #000;
+            animation: fadeOutBg 4s forwards;
+        }
+
+        #result-text {
+            font-size: 2.5rem;
+            font-weight: 900;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            animation: textFlash 3s forwards;
+            text-align: center;
+            padding: 0 10px;
+        }
+
+        @keyframes textFlash {
+            0% { transform: scale(0.5); opacity: 0; filter: blur(10px); color: #fff; }
+            30% { transform: scale(1.1); opacity: 1; filter: blur(0px); color: var(--gold); text-shadow: 0 0 50px var(--gold); }
+            100% { transform: scale(1); opacity: 0; filter: blur(5px); }
+        }
+
+        @keyframes fadeOutBg {
+            0% { background: #000; }
+            80% { background: #000; }
+            100% { background: transparent; pointer-events: none; }
+        }
+
+        .stats-container {
+            width: 90%;
+            max-width: 400px;
+            background: linear-gradient(180deg, #1a1500 0%, #050000 100%);
+            border: 2px solid var(--deep-gold);
+            border-radius: 30px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 0 40px var(--gold-shadow);
+            opacity: 0;
+            transform: translateY(30px);
+            animation: showStats 1s forwards 3.5s;
+        }
+
+        @keyframes showStats {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 { font-family: 'Montserrat'; color: var(--gold); font-size: 1.1rem; margin-bottom: 20px; letter-spacing: 2px; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+        th { font-size: 0.65rem; color: #888; padding: 10px; text-align: left; text-transform: uppercase; }
+        td { padding: 14px 10px; font-size: 0.85rem; border-bottom: 1px solid rgba(255, 204, 0, 0.1); text-align: left; font-weight: 500; }
+
+        .role-tag { padding: 4px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: 900; text-transform: uppercase; }
+        .gold-tag { background: var(--gold); color: #000; box-shadow: 0 0 10px var(--gold-shadow); }
+
+        .menu-btn {
+            background: var(--gold);
+            color: #000;
+            border: none;
+            padding: 14px 50px;
+            font-family: 'Orbitron';
+            font-weight: 900;
+            border-radius: 15px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 5px 20px var(--gold-shadow);
+        }
+        .menu-btn:active { transform: scale(0.9); }
+    </style>
+</head>
+<body>
+
+    <div id="result-overlay">
+        <div id="result-text">РЕЗУЛЬТАТ</div>
+    </div>
+
+    <div class="stats-container">
+        <h2>ЗВІТ ВИЖИВАННЯ</h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Учасник</th>
+                    <th>Режим</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+            <tbody id="stats-body">
+                </tbody>
+        </table>
+
+        <div style="font-size: 0.7rem; color: #777; margin-bottom: 25px; letter-spacing: 1px;">
+            ЛОБІ: #6824 | СТОЛ: <span style="color: var(--gold)">ROULETTE X6</span>
+        </div>
+
+        <a href="menu.html" class="menu-btn">У МЕНЮ</a>
+    </div>
+
+    <script>
+        // ЗАВАНТАЖЕННЯ ТЕМИ
+        function loadTheme() {
+            const d = JSON.parse(localStorage.getItem('mafia_pro_data'));
+            const root = document.documentElement;
+            if(d && d.theme === 'yellow') {
+                root.style.setProperty('--gold', '#ffcc00');
+                root.style.setProperty('--deep-gold', '#4a3c00');
+                root.style.setProperty('--gold-shadow', 'rgba(255, 204, 0, 0.2)');
+            } else if(d && d.theme === 'purple') {
+                root.style.setProperty('--gold', '#af52de');
+                root.style.setProperty('--deep-gold', '#2d0f3d');
+                root.style.setProperty('--gold-shadow', 'rgba(175, 82, 222, 0.2)');
+            }
+        }
+        loadTheme();
+
+        window.onload = () => {
+            // Читаємо результат з ryletka1.html
+            const resultMsg = localStorage.getItem('roulette_result_msg') || "ЗАВЕРШЕНО";
+            const reportData = localStorage.getItem('roulette_report');
+
+            document.getElementById('result-text').innerText = resultMsg;
+
+            // Список гравців для рулетки
+            let players = reportData ? JSON.parse(reportData) : [];
+
+            const tbody = document.getElementById('stats-body');
+            players.forEach(p => {
+                const row = `<tr>
+                    <td>${p.name}</td>
+                    <td><span class="role-tag gold-tag">${p.role}</span></td>
+                    <td style="color: ${p.isAlive ? '#4cd964' : '#ff3b30'}; font-weight: 800;">
+                        ${p.status}
+                    </td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        };
+    </script>
+</body>
+</html>

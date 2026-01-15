@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAFIA: COSMIC DESTINY</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Orbitron:wght@500;900&display=swap');
+
+        :root {
+            --deep-space: radial-gradient(circle at center, #050010 0%, #010103 100%);
+            --accent-red: #ff2d55;
+            --accent-sheriff: #0047ff;
+            --accent-green: #00ff88;
+            --gold: #ffcc00;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            background: #000; color: #fff; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; margin: 0; overflow: hidden;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .phone {
+            width: 380px; height: 820px; background: #000; border-radius: 60px; padding: 10px;
+            position: relative; border: 4px solid #1a1a1a;
+        }
+
+        .screen {
+            width: 100%; height: 100%; border-radius: 50px;
+            overflow: hidden; display: flex; flex-direction: column; position: relative;
+            background: var(--deep-space);
+        }
+
+        .nebula {
+            position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(77, 0, 255, 0.1) 0%, transparent 70%);
+            top: -200px; left: -200px; animation: pulse 10s infinite alternate; z-index: 1;
+        }
+        @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+        #roulette-screen {
+            position: absolute; inset: 0; background: #000; z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.8s ease;
+        }
+        .roll-txt { font-family: 'Montserrat'; font-size: 3.2rem; text-shadow: 0 0 20px currentColor; }
+
+        #timer { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10rem; font-family: 'Montserrat'; opacity: 0; z-index: 900; }
+
+        .game-main { flex: 1; display: flex; flex-direction: column; padding: 65px 22px 35px; z-index: 10; opacity: 0; transition: 1s; }
+        
+        .players-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 25px; position: relative; z-index: 50; }
+        
+        .p-card { 
+            background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255,255,255,0.1);
+            padding: 15px 5px; border-radius: 20px; text-align: center; backdrop-filter: blur(10px); 
+            transition: all 0.4s ease; position: relative;
+        }
+        
+        .p-card.can-kill { border-color: var(--accent-red); box-shadow: 0 0 15px var(--accent-red); cursor: pointer; }
+        .p-card.can-scan { border-color: var(--accent-sheriff); box-shadow: 0 0 15px var(--accent-sheriff); cursor: pointer; }
+        
+        .p-card.dead { 
+            opacity: 0.2; filter: grayscale(1); transform: scale(0.85) translateY(15px); 
+            border-color: #333 !important; box-shadow: none !important; pointer-events: none; 
+        }
+
+        .p-card div { font-size: 1.8rem; margin-bottom: 5px; pointer-events: none; }
+        .p-card span { font-size: 0.55rem; color: #666; pointer-events: none; }
+
+        .chat-space {
+            flex: 1; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 35px; padding: 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+        }
+        .msg { font-size: 0.8rem; line-height: 1.4; animation: msgIn 0.5s ease; }
+        .msg b.sys-label { color: var(--gold); }
+        
+        @keyframes msgIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+        #role-badge {
+            position: absolute; top: 60px; right: -250px; padding: 10px 25px;
+            border-radius: 20px 0 0 20px; font-weight: 900; font-size: 0.8rem; z-index: 100;
+            transition: 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+    </style>
+</head>
+<body onload="startSequence()">
+
+<div class="phone">
+    <div class="screen">
+        <div class="nebula"></div>
+        <div id="roulette-screen">
+            <div style="font-size: 0.6rem; color: #444; letter-spacing: 3px; margin-bottom: 10px;">ANALYZING DESTINY...</div>
+            <div id="roll-txt" class="roll-txt">???</div>
+        </div>
+        <div id="timer">3</div>
+        <div id="role-badge"></div>
+
+        <div class="game-main" id="ui-layer">
+            <div id="phase-txt" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:40px; text-align:center; font-size:0.7rem; margin-bottom:20px; border:1px solid rgba(255,255,255,0.1);">
+                🌙 НІЧ: МІСТО ЗАСИНАЄ
+            </div>
+            <div class="players-grid">
+                <div class="p-card" id="p0"><div>👤</div><span>ВИ</span></div>
+                <div class="p-card" id="p1" onclick="playerClicked(1)"><div>👤</div><span>БОТ 2</span></div>
+                <div class="p-card" id="p2" onclick="playerClicked(2)"><div>👤</div><span>БОТ 3</span></div>
+                <div class="p-card" id="p3" onclick="playerClicked(3)"><div>👤</div><span>БОТ 4</span></div>
+            </div>
+            <div class="chat-space" id="chat"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ЗАВАНТАЖЕННЯ ТЕМИ
+    function loadTheme() {
+        const d = JSON.parse(localStorage.getItem('mafia_pro_data'));
+        if(d && d.theme === 'yellow') {
+            document.documentElement.style.setProperty('--accent-red', '#ffcc00'); // Мафія стає золотою
+            document.documentElement.style.setProperty('--gold', '#ffcc00');
+        } else if(d && d.theme === 'purple') {
+            document.documentElement.style.setProperty('--accent-red', '#af52de'); // Мафія фіолетова
+            document.documentElement.style.setProperty('--gold', '#af52de');
+        }
+    }
+    loadTheme();
+
+    const roles = [
+        { name: 'МИРНИЙ', color: '#00ff88', cls: 'is-civil' },
+        { name: 'ШЕРИФ', color: '#0047ff', cls: 'can-scan' }, // ВИПРАВЛЕНО
+        { name: 'МАФІЯ', color: '#ff2d55', cls: 'can-kill' }
+    ];
+    
+    let bots = [
+        { id: 1, role: 'МИРНИЙ', alive: true },
+        { id: 2, role: 'МАФІЯ', alive: true },
+        { id: 3, role: 'МИРНИЙ', alive: true }
+    ];
+
+    let myRole = null;
+    let turnActive = false;
+
+    function addMsg(text) {
+        const chat = document.getElementById('chat');
+        const m = document.createElement('div');
+        m.className = 'msg';
+        m.innerHTML = `<b class="sys-label">СИСТЕМА:</b> ${text}`;
+        chat.appendChild(m);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function startSequence() {
+        myRole = roles[Math.floor(Math.random() * roles.length)];
+        localStorage.setItem('savedMafiaRole', JSON.stringify(myRole)); // Зберігаємо для наступних екранів
+        
+        let start = Date.now();
+        let spin = setInterval(() => {
+            let r = roles[Math.floor(Math.random() * roles.length)];
+            document.getElementById('roll-txt').innerText = r.name;
+            document.getElementById('roll-txt').style.color = r.color;
+            if(Date.now() - start > 3000) {
+                clearInterval(spin);
+                document.getElementById('roll-txt').innerText = myRole.name;
+                document.getElementById('roll-txt').style.color = myRole.color;
+                setTimeout(runTimer, 1000);
+            }
+        }, 100);
+    }
+
+    function runTimer() {
+        document.getElementById('roulette-screen').style.opacity = '0';
+        const badge = document.getElementById('role-badge');
+        badge.innerText = myRole.name;
+        badge.style.background = myRole.color;
+        badge.style.color = (myRole.name === 'МИРНИЙ') ? '#000' : '#fff';
+        badge.style.right = '0';
+        
+        let val = 3;
+        const t = document.getElementById('timer');
+        t.style.opacity = '1';
+        let count = setInterval(() => {
+            val--;
+            if(val > 0) t.innerText = val;
+            else {
+                clearInterval(count);
+                t.style.opacity = '0';
+                document.getElementById('roulette-screen').style.display = 'none';
+                document.getElementById('ui-layer').style.opacity = '1';
+                setTimeout(nightPhase, 1000);
+            }
+        }, 1000);
+    }
+
+    function nightPhase() {
+        addMsg(`Ваша роль: <span style="color:${myRole.color}">${myRole.name}</span>.`);
+        setTimeout(() => {
+            if(myRole.name !== 'МИРНИЙ') {
+                turnActive = true;
+                const task = myRole.name === 'МАФІЯ' ? "ЛІКВІДАЦІЇ" : "ПЕРЕВІРКИ";
+                document.getElementById('phase-txt').innerText = `🌙 ЧАС ${task}`;
+                addMsg(`Оберіть ціль.`);
+                // Додаємо підсвітку 
+                for(let i=1; i<=3; i++) document.getElementById('p'+i).classList.add(myRole.cls);
+            } else {
+                addMsg("Місто засинає. Ви відпочиваєте.");
+                setTimeout(dayTransition, 4000);
+            }
+        }, 1500);
+    }
+
+    function playerClicked(id) {
+        if(!turnActive) return;
+        
+        // ПЕРЕВІРКА НА ПОМИЛКУ (Safety check)
+        if (!bots[id-1]) return; 
+
+        turnActive = false;
+        const targetCard = document.getElementById('p' + id);
+        const botData = bots[id-1];
+
+        // Прибираємо підсвітку
+        document.querySelectorAll('.p-card').forEach(c => {
+            c.classList.remove('can-kill');
+            c.classList.remove('can-scan');
+        });
+
+        if(myRole.name === 'МАФІЯ') {
+            botData.alive = false;
+            targetCard.classList.add('dead');
+            addMsg(`Гравця ${id+1} ліквідовано.`);
+        } else if(myRole.name === 'ШЕРИФ') { // ВИПРАВЛЕНО
+            const resColor = botData.role === 'МАФІЯ' ? 'var(--accent-red)' : 'var(--accent-green)';
+            addMsg(`Результат: Гравець ${id+1} — <span style="color:${resColor}">${botData.role}</span>.`);
+        }
+
+        // Зберігаємо стан для play4.html
+        localStorage.setItem('mafia_round_state', JSON.stringify({
+            myRole: myRole,
+            bots: bots
+        }));
+
+        setTimeout(dayTransition, 2500);
+    }
+
+    function dayTransition() {
+        document.getElementById('phase-txt').innerText = "☀️ РАНОК НАСТАВ";
+        addMsg("Перехід до обговорення...");
+        setTimeout(() => {
+            window.location.href = "play4.html"; 
+        }, 2000);
+    }
+</script>
+</body>
+</html>

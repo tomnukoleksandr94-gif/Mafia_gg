@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MAFIA ELITE: PRO</title>
+    <style>
+        :root {
+            --bg: #08080a;
+            --accent: #ff3b30;
+            --accent-dark: #8b0000;
+            --gold: #ffcc00;
+            --border: rgba(255, 59, 48, 0.2);
+            --shadow: rgba(255, 59, 48, 0.6);
+            --text-gray: #a0a0a0;
+        }
+
+        /* ТЕМИ */
+        body.theme-yellow { --accent: #ffcc00; --accent-dark: #b8860b; --border: rgba(255, 204, 0, 0.2); --shadow: rgba(255, 204, 0, 0.6); }
+        body.theme-purple { --accent: #af52de; --accent-dark: #5e17eb; --border: rgba(175, 82, 222, 0.2); --shadow: rgba(175, 82, 222, 0.6); }
+
+        * { box-sizing: border-box; font-family: 'SF Pro Display', sans-serif; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { background: #000; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; transition: 0.5s; }
+
+        .particles { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; border-radius: 48px; }
+        .particle { 
+            position: absolute; bottom: -5%; background: var(--accent); border-radius: 50%; 
+            opacity: 0; filter: blur(2px); box-shadow: 0 0 12px var(--accent); 
+            animation: moveUp 8s infinite linear, sway 4s infinite ease-in-out; 
+        }
+        @keyframes moveUp {
+            0% { bottom: -5%; opacity: 0; }
+            20% { opacity: 0.6; }
+            80% { opacity: 0.2; }
+            90% { opacity: 0; }
+            100% { bottom: 85%; opacity: 0; }
+        }
+        @keyframes sway { 0%, 100% { margin-left: 0px; } 50% { margin-left: 30px; } }
+
+        .phone {
+            width: 380px; height: 820px; background: #000; border-radius: 60px; padding: 12px;
+            position: relative; border: 4px solid #1a1a1a; box-shadow: 0 0 60px var(--shadow); z-index: 10;
+        }
+        .screen { width: 100%; height: 100%; background: var(--bg); border-radius: 48px; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+
+        #custom-toast, .custom-modal {
+            position: absolute; left: 50%; transform: translateX(-50%);
+            width: 85%; background: rgba(20, 20, 22, 0.95); backdrop-filter: blur(20px);
+            border: 1px solid var(--border); border-radius: 25px; padding: 20px; z-index: 1000;
+            transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #custom-toast { top: -150px; display: flex; align-items: center; gap: 15px; }
+        #custom-toast.show { top: 60px; }
+        
+        .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); z-index: 999; display: none; backdrop-filter: blur(5px); }
+        .custom-modal { top: 50%; transform: translate(-50%, -50%) scale(0.8); opacity: 0; pointer-events: none; text-align: center; }
+        .custom-modal.active { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+
+        .top-bar { padding: 50px 25px 15px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .coin-box { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); padding: 8px 18px; border-radius: 20px; display: flex; align-items: center; gap: 8px; }
+        
+        .main-content { flex: 1; overflow-y: auto; padding: 10px 20px 110px; z-index: 5; scrollbar-width: none; }
+        .page { display: none; animation: slideUp 0.4s ease-out; }
+        .page.active { display: block; }
+
+        .menu-block { background: rgba(255, 255, 255, 0.03); border-left: 4px solid var(--accent); border-radius: 18px; padding: 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .play-btn { background: linear-gradient(45deg, var(--accent-dark), var(--accent)); color: white; border: none; padding: 20px; border-radius: 22px; font-weight: 900; font-size: 1.5rem; width: 100%; cursor: pointer; transition: 0.2s; box-shadow: 0 8px 20px var(--shadow); }
+        .play-btn:active { transform: scale(0.96); }
+
+        .toggle { width: 48px; height: 26px; background: #333; border-radius: 20px; position: relative; cursor: pointer; transition: 0.3s; }
+        .toggle.on { background: var(--accent); }
+        .toggle::after { content: ''; position: absolute; width: 20px; height: 20px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: 0.3s; }
+        .toggle.on::after { left: 25px; }
+
+        .nav-bar { position: absolute; bottom: 0; width: 100%; height: 95px; background: rgba(8, 8, 10, 0.95); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding-bottom: 25px; z-index: 20; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #555; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .nav-item.active { color: var(--accent); }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="phone">
+    <div class="screen">
+        <div class="particles" id="particle-container"></div>
+        
+        <div class="modal-overlay" id="overlay"></div>
+        <div class="custom-modal" id="confirm-modal">
+            <h3 style="color: var(--accent); margin-top: 0;">УВАГА!</h3>
+            <p style="font-size: 0.85rem; color: var(--text-gray);">Ви дійсно хочете скинути весь прогрес та покупки?</p>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="play-btn" style="font-size: 0.9rem; padding: 12px; background: #222;" onclick="closeConfirm()">СКАСУВАТИ</button>
+                <button class="play-btn" style="font-size: 0.9rem; padding: 12px;" onclick="actualReset()">ТАК, СКИНУТИ</button>
+            </div>
+        </div>
+
+        <div id="custom-toast">
+            <div style="width:40px; height:40px; background:var(--accent); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.3rem;" id="toast-icon">✅</div>
+            <div>
+                <div style="font-weight:900; font-size:0.85rem;" id="toast-title">УСПІХ</div>
+                <div style="font-size:0.75rem; color:var(--text-gray);" id="toast-msg">Покупка завершена!</div>
+            </div>
+        </div>
+
+        <div class="top-bar">
+            <div class="coin-box">
+                <div style="width:20px; height:20px; background:var(--gold); border-radius:50%; color:#000; font-size:12px; font-weight:900; display:flex; align-items:center; justify-content:center;">M</div>
+                <span id="balance" style="font-weight:900; color:var(--gold); font-size: 1.1rem;">5,800</span>
+            </div>
+            <div id="top-nickname" style="color: var(--accent); font-weight: 900; font-size: 0.8rem; letter-spacing: 1px;">ELITE</div>
+        </div>
+
+        <div class="main-content">
+            <div id="home" class="page active">
+                <div class="menu-block" style="background: linear-gradient(145deg, #1a1a1c, #0d0d0f); border-left: none; border: 1px solid var(--border);">
+                    <div style="position:relative; width:65px; height:65px;">
+                        <div style="width:100%; height:100%; border:2.5px solid var(--accent); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.2rem;">🕵️‍♂️</div>
+                        <div id="user-mask" style="position:absolute; top:-5px; right:-5px; font-size:1.4rem; display:none;">🎭</div>
+                    </div>
+                    <div style="flex:1; margin-left:15px;">
+                        <h3 style="margin:0; font-size: 1.2rem;" id="display-name">AGENT</h3>
+                        <div style="color:var(--accent); font-size:0.7rem; font-weight:900; margin-top:3px;">LVL 24 • GODFATHER</div>
+                    </div>
+                    <div style="color:var(--accent); font-size:1.3rem;">✎</div>
+                </div>
+
+                <div style="background: rgba(17,17,19,0.8); border: 1px solid var(--border); border-radius: 35px; padding: 30px 20px; text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 0.7rem; color: var(--text-gray); letter-spacing: 4px; font-weight: 800; margin-bottom: 15px; opacity: 0.6;">READY FOR MISSION</div>
+                    <button class="play-btn" onclick="location.href='regim.html'">У БІЙ</button>
+                    <div style="display:flex; justify-content: space-around; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                        <div><b style="font-size: 1.3rem;">128</b><br><span style="color:var(--text-gray); font-size:0.65rem; font-weight: 800;">WINS</span></div>
+                        <div style="width:1px; background:var(--border);"></div>
+                        <div><b style="font-size: 1.3rem;">64%</b><br><span style="color:var(--text-gray); font-size:0.65rem; font-weight: 800;">WINRATE</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="shop" class="page">
+                <h2 style="border-left:4px solid var(--accent); padding-left:15px; font-size:1.4rem; margin-bottom: 20px;">МАРКЕТ</h2>
+                <div class="menu-block">
+                    <div><h4 style="margin:0">ЖОВТА ТЕМА</h4><p style="margin:5px 0 0; font-size:0.7rem; color:var(--text-gray);">Золотий інтерфейс</p></div>
+                    <button class="play-btn" style="width:auto; padding:10px 18px; font-size:0.8rem;" onclick="buyItem('theme', 'yellow', 1000)">1000 M</button>
+                </div>
+                <div class="menu-block">
+                    <div><h4 style="margin:0">ФІОЛЕТОВА ТЕМА</h4><p style="margin:5px 0 0; font-size:0.7rem; color:var(--text-gray);">Неоновий стиль</p></div>
+                    <button class="play-btn" style="width:auto; padding:10px 18px; font-size:0.8rem;" onclick="buyItem('theme', 'purple', 1500)">1500 M</button>
+                </div>
+                <div class="menu-block">
+                    <div><h4 style="margin:0">ЧЕРВОНА ТЕМА</h4><p style="margin:5px 0 0; font-size:0.7rem; color:var(--text-gray);">Класичний стиль</p></div>
+                    <button class="play-btn" style="width:auto; padding:10px 18px; font-size:0.8rem;" onclick="buyItem('theme', 'red', 0)">БЕЗКОШТОВНО</button>
+                </div>
+                <div class="menu-block">
+                    <div><h4 style="margin:0">МАСКА "🎭"</h4><p style="margin:5px 0 0; font-size:0.7rem; color:var(--text-gray);">Аксесуар</p></div>
+                    <button class="play-btn" style="width:auto; padding:10px 18px; font-size:0.8rem;" onclick="buyItem('mask', '🎭', 2000)">2000 M</button>
+                </div>
+            </div>
+
+            <div id="settings" class="page">
+                <h2 style="border-left:4px solid var(--accent); padding-left:15px; font-size:1.4rem; margin-bottom: 20px;">НАЛАШТУВАННЯ</h2>
+                <div class="menu-block"><span>ЗВУКОВІ ЕФЕКТИ</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+                <div class="menu-block"><span>ВІБРАЦІЯ</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+                <div class="menu-block"><span>60 FPS РЕЖИМ</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+                <div class="menu-block">
+                    <span>МОВА ГРИ</span>
+                    <span style="color: var(--accent); font-weight: 800; font-size: 0.8rem;">UKRAINIAN</span>
+                </div>
+                <div class="menu-block" style="border-left-color: #fff; margin-top: 20px;" onclick="openConfirm()">
+                    <span style="color: var(--accent); font-weight: 900;">СКИНУТИ ВСІ ДАНІ</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-bar">
+            <div class="nav-item active" onclick="showTab('home', this)">🏠<span>Головна</span></div>
+            <div class="nav-item" onclick="showTab('shop', this)">🛒<span>Магазин</span></div>
+            <div class="nav-item" onclick="showTab('settings', this)">⚙️<span>Опції</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Ініціалізація з безпечною перевіркою
+    let saved = localStorage.getItem('mafia_pro_data');
+    let userData = saved ? JSON.parse(saved) : {
+        name: 'AGENT', coins: 5800, theme: 'red', mask: '', owned: ['red']
+    };
+    
+    if(!saved) localStorage.setItem('mafia_pro_data', JSON.stringify(userData));
+
+    function showToast(title, msg, icon = '✅') {
+        const toast = document.getElementById('custom-toast');
+        document.getElementById('toast-title').innerText = title;
+        document.getElementById('toast-msg').innerText = msg;
+        document.getElementById('toast-icon').innerText = icon;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function openConfirm() {
+        document.getElementById('overlay').style.display = 'block';
+        document.getElementById('confirm-modal').classList.add('active');
+    }
+    function closeConfirm() {
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('confirm-modal').classList.remove('active');
+    }
+    function actualReset() {
+        localStorage.clear();
+        location.reload();
+    }
+
+    function applyData() {
+        document.getElementById('display-name').innerText = userData.name;
+        document.getElementById('top-nickname').innerText = userData.name.substring(0,8).toUpperCase();
+        document.getElementById('balance').innerText = userData.coins.toLocaleString();
+        
+        // Застосування теми
+        document.body.className = 'theme-' + (userData.theme || 'red');
+        
+        const maskEl = document.getElementById('user-mask');
+        if(userData.mask) { maskEl.innerText = userData.mask; maskEl.style.display = 'block'; }
+        else { maskEl.style.display = 'none'; }
+        
+        localStorage.setItem('mafia_pro_data', JSON.stringify(userData));
+    }
+
+    function buyItem(type, val, price) {
+        if (userData.owned.includes(val)) {
+            if(type === 'theme') userData.theme = val;
+            if(type === 'mask') userData.mask = val;
+            showToast('ЗАСТОСОВАНО', 'Стиль оновлено', '✨');
+        } else if (userData.coins >= price) {
+            userData.coins -= price;
+            userData.owned.push(val);
+            if(type === 'theme') userData.theme = val;
+            if(type === 'mask') userData.mask = val;
+            showToast('КУПЛЕНО', 'Дякуємо за покупку!', '💰');
+        } else {
+            showToast('МАЛО МОНЕТ', 'Заробляйте більше у бою', '❌');
+        }
+        applyData();
+    }
+
+    function showTab(id, el) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    const container = document.getElementById('particle-container');
+    for(let i=0; i<30; i++) {
+        let p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.animationDelay = Math.random() * 8 + 's';
+        p.style.animationDuration = (Math.random() * 3 + 7) + 's';
+        let s = Math.random() * 5 + 3;
+        p.style.width = p.style.height = s + 'px';
+        container.appendChild(p);
+    }
+
+    applyData();
+</script>
+</body>
+</html>

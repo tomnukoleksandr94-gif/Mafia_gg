@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAFIA: COSMIC ENGINE FINAL</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Orbitron:wght@500;900&display=swap');
+
+        :root {
+            --deep-space: radial-gradient(circle at center, #050010 0%, #010103 100%);
+            --accent-red: #ff2d55;
+            --accent-green: #00ff88;
+            --gold: #ffcc00;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #000; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; font-family: 'Orbitron', sans-serif; }
+
+        .fade-overlay { position: absolute; inset: 0; background: #000; z-index: 9999; pointer-events: none; animation: fadeWelcome 1.5s forwards; }
+        @keyframes fadeWelcome { from { opacity: 1; } to { opacity: 0; } }
+
+        .phone { width: 380px; height: 820px; background: #000; border-radius: 60px; padding: 10px; position: relative; border: 4px solid #1a1a1a; }
+        .screen { width: 100%; height: 100%; border-radius: 50px; overflow: hidden; display: flex; flex-direction: column; position: relative; background: var(--deep-space); }
+
+        .nebula { position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(77, 0, 255, 0.15) 0%, transparent 70%); top: -200px; left: -200px; animation: pulse 8s infinite alternate; z-index: 1; }
+        @keyframes pulse { from { opacity: 0.4; transform: scale(1); } to { opacity: 0.8; transform: scale(1.2); } }
+
+        .game-main { flex: 1; display: flex; flex-direction: column; padding: 60px 20px 30px; z-index: 10; height: 100%; }
+        
+        #phase-txt { background: var(--glass); padding: 12px; border-radius: 40px; text-align: center; font-size: 0.7rem; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px); text-transform: uppercase; color: var(--gold); }
+
+        .players-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; }
+        .p-card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); padding: 12px 5px; border-radius: 20px; text-align: center; transition: 0.5s; backdrop-filter: blur(10px); }
+        .p-card div { font-size: 1.6rem; margin-bottom: 4px; }
+        .p-card span { font-size: 0.55rem; color: #aaa; font-family: 'Montserrat'; font-weight: 900; }
+        
+        .p-card.dead { opacity: 0.2; filter: grayscale(1); border-color: var(--accent-red); pointer-events: none; transform: scale(0.9); }
+        .voting-active { border-color: var(--gold); cursor: pointer; transform: scale(1.05); box-shadow: 0 0 15px rgba(255,204,0,0.2); }
+        .voted-target { border-color: var(--accent-green) !important; box-shadow: 0 0 25px var(--accent-green) !important; transform: scale(1.1); z-index: 50; }
+        .blur-others { filter: blur(4px) grayscale(0.5); opacity: 0.3; transform: scale(0.9); }
+
+        .chat-space { flex: 1; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.08); border-radius: 25px; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scrollbar-width: none; }
+        .chat-space::-webkit-scrollbar { display: none; }
+
+        .msg { font-size: 0.75rem; line-height: 1.4; padding: 8px 12px; border-radius: 15px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); animation: slideUp 0.3s forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .msg b { color: var(--gold); }
+        .msg.bot b { color: #50e3c2; }
+        .msg.sys { background: rgba(255, 45, 85, 0.1); border-left: 3px solid var(--accent-red); color: #ffbaba; }
+        .msg.vote-log { background: rgba(0, 71, 255, 0.1); border-left: 3px solid #0047ff; font-style: italic; }
+
+        .input-area { display: flex; gap: 8px; margin-top: 15px; background: var(--glass); padding: 5px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .input-area input { flex: 1; background: transparent; border: none; padding: 10px 15px; color: #fff; font-family: inherit; font-size: 0.8rem; outline: none; }
+        .send-btn { background: var(--accent-green); border: none; border-radius: 15px; width: 40px; height: 40px; color: #000; font-weight: 900; cursor: pointer; }
+
+        #vote-timer-btn { display: none; width: 100%; background: var(--gold); color: #000; border: none; padding: 12px; border-radius: 20px; font-family: 'Orbitron'; font-weight: 900; margin-top: 10px; }
+        
+        #role-badge { position: absolute; top: 60px; right: -250px; padding: 10px 25px; border-radius: 20px 0 0 20px; font-weight: 900; font-size: 0.8rem; z-index: 100; transition: 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28); color: #000; }
+    </style>
+</head>
+<body>
+
+<div class="fade-overlay"></div>
+
+<div class="phone">
+    <div class="screen">
+        <div class="nebula"></div>
+        <div id="role-badge"></div>
+        
+        <div class="game-main">
+            <div id="phase-txt">🛰️ ПІДКЛЮЧЕННЯ...</div>
+
+            <div class="players-grid" id="grid">
+                <div class="p-card" id="p0"><div>👤</div><span>ВИ</span></div>
+                <div class="p-card" id="p1" onclick="handleVote(1)"><div>👤</div><span>БОТ 2</span></div>
+                <div class="p-card" id="p2" onclick="handleVote(2)"><div>👤</div><span>БОТ 3</span></div>
+                <div class="p-card" id="p3" onclick="handleVote(3)"><div>👤</div><span>БОТ 4</span></div>
+            </div>
+
+            <div class="chat-space" id="chat"></div>
+
+            <button id="vote-timer-btn">ГОЛОСУВАННЯ: 10с</button>
+
+            <div class="input-area" id="ui-input">
+                <input type="text" id="user-msg" placeholder="Твій аргумент..." onkeypress="if(event.key==='Enter') sendUserMsg()">
+                <button class="send-btn" onclick="sendUserMsg()">></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ТЕМА
+    function loadTheme() {
+        const d = JSON.parse(localStorage.getItem('mafia_pro_data'));
+        if(d && d.theme === 'yellow') {
+            document.documentElement.style.setProperty('--accent-red', '#ffcc00');
+            document.documentElement.style.setProperty('--gold', '#ffcc00');
+        } else if(d && d.theme === 'purple') {
+            document.documentElement.style.setProperty('--accent-red', '#af52de');
+            document.documentElement.style.setProperty('--gold', '#af52de');
+        }
+    }
+    loadTheme();
+
+    const chat = document.getElementById('chat');
+    const phaseTxt = document.getElementById('phase-txt');
+    const voteBtn = document.getElementById('vote-timer-btn');
+    const roleBadge = document.getElementById('role-badge');
+    
+    // СТАН ГРИ (ІНІЦІАЛІЗАЦІЯ)
+    let myRoleName = "МИРНИЙ";
+    let playerAlive = [true, true, true, true];
+    let roles = ["МИРНИЙ", "МИРНИЙ", "МАФІЯ", "МИРНИЙ"]; // дефолт
+    let botNames = ["БОТ 2", "БОТ 3", "БОТ 4"];
+    let isVoting = false;
+
+    // Словник
+    const botLexicon = {
+        accusations: ["ГРАВЕЦЬ_X занадто підозріло мовчить.", "Я впевнений, що ГРАВЕЦЬ_X — мафія.", "Подивіться на ГРАВЕЦЬ_X, він точно щось приховує."],
+        defenses: ["Я чистий мирний, ви робите помилку!", "Не треба в мене голосувати!", "Це наклеп!"],
+        replies: ["Згоден з тобою.", "Я теж так думаю.", "Сумніваюся в твоїх словах."]
+    };
+
+    function addMsg(sender, text, type = '') {
+        const m = document.createElement('div');
+        m.className = `msg ${type}`;
+        m.innerHTML = `<b>${sender}:</b> ${text}`;
+        chat.appendChild(m);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    window.onload = () => {
+        // Відновлюємо дані з viner4.html
+        const savedRole = localStorage.getItem('savedMafiaRole');
+        const savedState = localStorage.getItem('mafia_round_state');
+        
+        if (savedRole) {
+            const r = JSON.parse(savedRole);
+            myRoleName = r.name;
+            roles[0] = r.name;
+            roleBadge.innerText = r.name;
+            roleBadge.style.background = r.color;
+            roleBadge.style.right = '0';
+        }
+
+        if (savedState) {
+            const st = JSON.parse(savedState);
+            // Оновлюємо ролі та статус ботів
+            st.bots.forEach((b, i) => {
+                roles[i+1] = b.role;
+                if(!b.alive) {
+                    playerAlive[i+1] = false;
+                    document.getElementById('p'+(i+1)).classList.add('dead');
+                }
+            });
+        }
+
+        addMsg("СИСТЕМА", "Місто прокинулось.", "sys");
+        // Перевірка, чи не закінчилась гра одразу (якщо шериф вбив мафію)
+        if(checkGameEnd()) return;
+        startDiscussion();
+    };
+
+    function startDiscussion() {
+        let timeLeft = 20;
+        phaseTxt.innerText = `☀️ ОБГОВОРЕННЯ: ${timeLeft}с`;
+        
+        const timer = setInterval(() => {
+            timeLeft--;
+            phaseTxt.innerText = `☀️ ОБГОВОРЕННЯ: ${timeLeft}с`;
+
+            if (timeLeft % 5 === 0 && timeLeft > 0) {
+                const bIdx = Math.floor(Math.random() * 3);
+                if (playerAlive[bIdx + 1]) {
+                    let target; do { target = Math.floor(Math.random() * 4); } while (!playerAlive[target] || target === bIdx + 1);
+                    const targetName = target === 0 ? "ВИ" : "ГРАВЕЦЬ " + (target + 1);
+                    addMsg(botNames[bIdx], botLexicon.accusations[Math.floor(Math.random()*botLexicon.accusations.length)].replace("ГРАВЕЦЬ_X", targetName), "bot");
+                }
+            }
+
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                startVoting();
+            }
+        }, 1000);
+    }
+
+    function sendUserMsg() {
+        const input = document.getElementById('user-msg');
+        const text = input.value.trim();
+        if (!text || !playerAlive[0]) return;
+        
+        addMsg("ВИ", text);
+        input.value = "";
+        setTimeout(() => {
+            const aliveBots = botNames.filter((_, i) => playerAlive[i+1]);
+            if(aliveBots.length > 0) {
+                const randomBot = aliveBots[Math.floor(Math.random() * aliveBots.length)];
+                addMsg(randomBot, botLexicon.replies[Math.floor(Math.random()*botLexicon.replies.length)], "bot");
+            }
+        }, 1200);
+    }
+
+    function startVoting() {
+        isVoting = true;
+        voteBtn.style.display = "block";
+        addMsg("СИСТЕМА", "ГОЛОСУЙТЕ ЗА ЦІЛЬ!", "sys");
+        document.querySelectorAll('.p-card').forEach((c, i) => { if(i!==0 && playerAlive[i]) c.classList.add('voting-active'); });
+    }
+
+    function handleVote(idx) {
+        if (!isVoting) return;
+        isVoting = false;
+        
+        let votesCount = [0,0,0,0];
+        votesCount[idx]++; // Ваш голос
+
+        document.querySelectorAll('.p-card').forEach((c, i) => {
+            if(i !== idx) c.classList.add('blur-others');
+            else c.classList.add('voted-target');
+        });
+
+        addMsg("ВИ", `Голос проти ГРАВЦЯ ${idx+1}`, "vote-log");
+
+        // Боти голосують
+        botNames.forEach((name, i) => {
+            if (playerAlive[i+1]) {
+                const target = Math.floor(Math.random() * 4);
+                votesCount[target]++;
+                const tName = target === 0 ? "ВИ" : "ГРАВЕЦЬ " + (target+1);
+                setTimeout(() => addMsg(name, `Мій голос: ${tName}`, "vote-log"), 600 * i);
+            }
+        });
+
+        setTimeout(() => processResult(votesCount), 3000);
+    }
+
+    function processResult(votesCount) {
+        voteBtn.style.display = "none";
+        document.querySelectorAll('.p-card').forEach(c => c.classList.remove('blur-others', 'voted-target', 'voting-active'));
+
+        let max = Math.max(...votesCount);
+        let candidates = [];
+        votesCount.forEach((v, i) => { if(v === max) candidates.push(i); });
+
+        if (candidates.length > 1) {
+            addMsg("СИСТЕМА", "НІЧИЯ! Нікого не вигнано.", "sys");
+            if(!checkGameEnd()) startNight();
+        } else {
+            let loser = candidates[0];
+            playerAlive[loser] = false;
+            document.getElementById('p' + loser).classList.add('dead');
+            addMsg("СИСТЕМА", `ГРАВЕЦЬ ${loser+1} вибув. Роль: ${roles[loser]}.`, "sys");
+            if(!checkGameEnd()) startNight();
+        }
+    }
+
+    function checkGameEnd() {
+        const mafiaAlive = roles.filter((r, i) => r === "МАФІЯ" && playerAlive[i]).length;
+        const totalAlive = playerAlive.filter(a => a).length;
+        
+        // Мафію вбито
+        if (mafiaAlive === 0) { finalize("ПЕРЕМОГА МИРНИХ"); return true; }
+        // Мафія захопила більшість
+        if (mafiaAlive >= totalAlive / 2) { finalize("ПЕРЕМОГА МАФІЇ"); return true; }
+        
+        return false;
+    }
+
+    function startNight() {
+        phaseTxt.innerText = "🌙 НІЧ...";
+        document.getElementById('grid').style.opacity = "0.3";
+        addMsg("СИСТЕМА", "Місто засинає...", "sys");
+        
+        setTimeout(() => {
+            // Емуляція вбивства вночі
+            let aliveCivils = [];
+            playerAlive.forEach((a, i) => { if(a && roles[i] !== "МАФІЯ") aliveCivils.push(i); });
+            
+            if(aliveCivils.length > 0) {
+                let victim = aliveCivils[Math.floor(Math.random()*aliveCivils.length)];
+                playerAlive[victim] = false;
+                document.getElementById('p' + victim).classList.add('dead');
+                addMsg("НІЧ", `Вбито ГРАВЦЯ ${victim+1}`, "sys");
+            }
+
+            document.getElementById('grid').style.opacity = "1";
+            if(!checkGameEnd()) startDiscussion();
+        }, 4000);
+    }
+
+    function finalize(msg) {
+        addMsg("ФІНАЛ", msg, "sys");
+        // Зберігаємо ДЕТАЛЬНИЙ звіт для підсумків
+        const report = playerAlive.map((alive, i) => ({
+            name: i===0 ? "ВИ (ГРАВЕЦЬ 1)" : `ГРАВЕЦЬ ${i+1}`,
+            role: roles[i],
+            status: alive ? "ЖИВИЙ" : "ВИБУВ"
+        }));
+        
+        localStorage.setItem('lastGameResult', msg);
+        localStorage.setItem('finalReport', JSON.stringify(report));
+        
+        setTimeout(() => {
+            window.location.href = "pidsumok4.html";
+        }, 3000);
+    }
+</script>
+</body>
+</html>

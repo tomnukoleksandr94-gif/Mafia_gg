@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAFIA: OPERATION REPORT</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&family=Orbitron:wght@500;900&display=swap');
+
+        :root {
+            --bg-dark: #050000;
+            --mafia-red: #ff0000;
+            --deep-red: #4a0000;
+            --red-glow: rgba(255, 0, 0, 0.2);
+        }
+
+        * { box-sizing: border-box; }
+        body { 
+            background: var(--bg-dark); 
+            color: #fff; 
+            font-family: 'Orbitron', sans-serif; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden;
+        }
+
+        /* АНІМАЦІЯ ТЕКСТУ ПРИ ВХОДІ */
+        #result-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            background: #000;
+            animation: fadeOutBg 4s forwards;
+        }
+
+        #result-text {
+            font-size: 2.5rem;
+            font-weight: 900;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            animation: textFlash 3s forwards;
+            text-align: center;
+            padding: 0 10px;
+        }
+
+        @keyframes textFlash {
+            0% { transform: scale(0.5); opacity: 0; filter: blur(10px); color: #fff; }
+            30% { transform: scale(1.1); opacity: 1; filter: blur(0px); color: var(--mafia-red); text-shadow: 0 0 50px var(--mafia-red); }
+            100% { transform: scale(1); opacity: 0; filter: blur(5px); }
+        }
+
+        @keyframes fadeOutBg {
+            0% { background: #000; }
+            80% { background: #000; }
+            100% { background: transparent; pointer-events: none; }
+        }
+
+        /* КОНТЕЙНЕР ТАБЛИЦІ */
+        .stats-container {
+            width: 90%;
+            max-width: 400px;
+            background: linear-gradient(180deg, #1a0000 0%, #050000 100%);
+            border: 2px solid var(--deep-red);
+            border-radius: 30px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 0 40px var(--red-glow);
+            opacity: 0;
+            transform: translateY(30px);
+            animation: showStats 1s forwards 3.5s;
+        }
+
+        @keyframes showStats {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 { font-family: 'Montserrat'; color: var(--mafia-red); font-size: 1.1rem; margin-bottom: 20px; letter-spacing: 2px; text-transform: uppercase; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+        th { font-size: 0.65rem; color: #888; padding: 10px; text-align: left; text-transform: uppercase; }
+        td { padding: 14px 10px; font-size: 0.85rem; border-bottom: 1px solid rgba(255, 0, 0, 0.1); text-align: left; }
+
+        .role-tag { padding: 4px 10px; border-radius: 6px; font-size: 0.6rem; font-weight: 900; text-transform: uppercase; }
+        .red-tag { background: var(--mafia-red); color: #000; box-shadow: 0 0 10px rgba(255, 0, 0, 0.3); }
+        .green-tag { background: #00ff88; color: #000; }
+        .blue-tag { background: #0047ff; color: #fff; }
+
+        .status-text { font-weight: 800; }
+
+        .menu-btn {
+            background: var(--mafia-red);
+            color: #000;
+            border: none;
+            padding: 14px 50px;
+            font-family: 'Orbitron';
+            font-weight: 900;
+            border-radius: 15px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 5px 20px var(--red-glow);
+        }
+        .menu-btn:active { transform: scale(0.9); }
+    </style>
+</head>
+<body>
+
+    <div id="result-overlay">
+        <div id="result-text">РЕЗУЛЬТАТ</div>
+    </div>
+
+    <div class="stats-container">
+        <h2>ОПЕРАЦІЯ "МАФІЯ"</h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Агент</th>
+                    <th>Роль</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+            <tbody id="stats-body">
+                </tbody>
+        </table>
+
+        <div style="font-size: 0.7rem; color: #666; margin-bottom: 25px; letter-spacing: 1px;">
+            ЛОКАЦІЯ: МІСТО N | СЕКТОР: <span style="color: var(--mafia-red)">MAFIA-4</span>
+        </div>
+
+        <a href="menu.html" class="menu-btn">В МЕНЮ</a>
+    </div>
+
+    <script>
+        // ЗАВАНТАЖЕННЯ ТЕМИ
+        function loadTheme() {
+            const d = JSON.parse(localStorage.getItem('mafia_pro_data'));
+            const root = document.documentElement;
+            if(d && d.theme === 'yellow') {
+                root.style.setProperty('--mafia-red', '#ffcc00');
+                root.style.setProperty('--deep-red', '#4a3c00');
+                root.style.setProperty('--red-glow', 'rgba(255, 204, 0, 0.2)');
+            } else if(d && d.theme === 'purple') {
+                root.style.setProperty('--mafia-red', '#af52de');
+                root.style.setProperty('--deep-red', '#2d0f3d');
+                root.style.setProperty('--red-glow', 'rgba(175, 82, 222, 0.2)');
+            }
+        }
+        loadTheme();
+
+        window.onload = () => {
+            // Отримуємо реальні результати з play4.html
+            const finalMsg = localStorage.getItem('lastGameResult') || "ГРУ ЗАВЕРШЕНО";
+            const reportData = localStorage.getItem('finalReport');
+            
+            // Встановлюємо заголовок (ПЕРЕМОГА/ПОРАЗКА)
+            document.getElementById('result-text').innerText = finalMsg;
+
+            // Якщо немає даних, показуємо заглушку
+            let players = reportData ? JSON.parse(reportData) : [
+                { name: "Error", role: "Unknown", status: "Error" }
+            ];
+
+            const tbody = document.getElementById('stats-body');
+            tbody.innerHTML = ''; // Очистка
+
+            players.forEach(p => {
+                const isDead = p.status === "ВИБУВ";
+                
+                // Визначаємо колір тега ролі
+                let tagClass = "green-tag";
+                if (p.role === "МАФІЯ") tagClass = "red-tag";
+                if (p.role === "ШЕРИФ") tagClass = "blue-tag"; // Виправлено spelling
+
+                const row = `<tr>
+                    <td>${p.name}</td>
+                    <td><span class="role-tag ${tagClass}">${p.role}</span></td>
+                    <td class="status-text" style="color: ${isDead ? 'var(--mafia-red)' : '#00ff88'}">
+                        ${p.status}
+                    </td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        };
+    </script>
+</body>
+</html>

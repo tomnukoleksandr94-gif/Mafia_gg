@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KOZAK ROULETTE: CLASSIC</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Montserrat:wght@800&display=swap');
+
+        :root {
+            --red: #ff003c;
+            --gold: #ffcc00;
+            --glow: rgba(255, 204, 0, 0.4);
+        }
+
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        body { background: #000; margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Montserrat', sans-serif; }
+
+        .phone-frame {
+            width: 380px; height: 820px; background: #000;
+            position: relative; border-radius: 60px; overflow: hidden; border: 4px solid #1a1a1a;
+            box-shadow: 0 0 100px rgba(0,0,0,0.5);
+        }
+
+        #start-overlay {
+            position: absolute; inset: 0; background: #000; z-index: 100;
+            display: flex; align-items: center; justify-content: center; transition: 0.8s;
+        }
+
+        .animate-cd { font-family: 'Orbitron'; font-size: 8rem; color: #fff; animation: scaleUp 1s forwards; }
+        @keyframes scaleUp { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
+
+        .spotlight {
+            position: absolute; top: -50px; left: 50%; transform: translateX(-50%);
+            width: 200%; height: 120%; 
+            background: radial-gradient(circle at 50% 40%, rgba(255, 230, 150, 0.15) 0%, transparent 60%);
+            z-index: 2; pointer-events: none;
+        }
+
+        .table {
+            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%) perspective(1000px) rotateX(35deg);
+            width: 340px; height: 340px; background: radial-gradient(circle, #3d2314 0%, #111 100%); 
+            border: 8px solid #150d07; border-radius: 50%; box-shadow: 0 40px 100px #000; z-index: 1;
+        }
+
+        .player {
+            position: absolute; width: 60px; height: 60px; border-radius: 50%;
+            background: #0a0a0a; border: 1px solid #333; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 5;
+        }
+        
+        .avatar { width: 18px; height: 18px; border-radius: 50%; background: var(--red); position: relative; }
+        .avatar::after { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 26px; height: 12px; background: var(--red); border-radius: 12px 12px 0 0; }
+        .player.is-me .avatar, .player.is-me .avatar::after { background: #fff; box-shadow: 0 0 10px #fff; }
+        .player b { font-size: 0.6rem; color: var(--red); font-family: 'Orbitron'; margin-top: 15px; }
+
+        .player.active { border-color: var(--gold); box-shadow: 0 0 40px var(--glow); transform: scale(1.15); }
+        .player.target { border-color: var(--red); cursor: pointer; animation: glow 0.8s infinite; }
+        .player.dead { opacity: 0; transform: scale(0); pointer-events: none; }
+
+        @keyframes glow { 50% { box-shadow: 0 0 25px var(--red); } }
+
+        .weapon { 
+            position: absolute; width: 50px; height: 30px; z-index: 10; 
+            transition: all 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28); pointer-events: none; 
+        }
+        .pistol-body { width: 30px; height: 15px; background: linear-gradient(#444, #111); border-radius: 2px; position: relative; border: 1px solid #000; }
+        .pistol-barrel { width: 18px; height: 8px; background: #222; position: absolute; right: -15px; top: 3.5px; border-right: 3px solid #555; }
+
+        .ui-header { position: absolute; top: 65px; width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 20; }
+        #timer-val { font-family: 'Orbitron'; font-size: 4rem; color: var(--gold); margin: 0; text-shadow: 0 0 25px var(--glow); }
+        #log-msg { 
+            margin-top: 15px; color: #fff; font-size: 0.75rem; font-family: 'Orbitron'; letter-spacing: 2px;
+            background: rgba(255, 255, 255, 0.05); padding: 10px 25px; border-radius: 30px;
+            border: 1px solid rgba(255, 204, 0, 0.3); text-align: center; width: 80%;
+        }
+
+        .btn-box { position: absolute; bottom: 80px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px; z-index: 30; }
+        .fire-btn { 
+            background: var(--red); color: #fff; border: none; padding: 18px 50px; 
+            border-radius: 15px; font-weight: 900; font-family: 'Orbitron'; cursor: pointer; 
+            box-shadow: 0 10px 30px rgba(255, 0, 60, 0.3); transition: 0.2s;
+        }
+        .fire-btn:active { transform: scale(0.95); }
+
+        @keyframes deathShake { 
+            0%, 100% { transform: translate(0,0); } 
+            25% { transform: translate(-10px, 5px); } 
+            50% { transform: translate(10px, -5px); } 
+            75% { transform: translate(-5px, 5px); } 
+        }
+        .shake-active { animation: deathShake 0.3s ease-in-out; }
+    </style>
+</head>
+<body>
+
+<div class="phone-frame" id="frame">
+    <div id="start-overlay"><div id="countdown" class="animate-cd">3</div></div>
+    <div class="spotlight"></div>
+    
+    <div class="ui-header">
+        <div id="timer-val">10</div>
+        <div id="log-msg">ПРИГОТУЙТЕСЯ</div>
+    </div>
+
+    <div class="table"></div>
+    <div id="players-box"></div>
+
+    <div class="weapon" id="gun">
+        <div class="pistol-body"><div class="pistol-barrel"></div></div>
+    </div>
+
+    <div class="btn-box">
+        <button class="fire-btn" id="shoot-self" onclick="handleAction(true)" style="display:none">СТРІЛЯТИ В СЕБЕ</button>
+    </div>
+</div>
+
+<script>
+    // ЗАВАНТАЖЕННЯ ТЕМИ
+    function loadTheme() {
+        const d = JSON.parse(localStorage.getItem('mafia_pro_data'));
+        const root = document.documentElement;
+        if(d && d.theme === 'yellow') {
+            root.style.setProperty('--red', '#ffcc00'); // Жовта небезпека
+            root.style.setProperty('--gold', '#fff'); // Білий акцент
+            root.style.setProperty('--glow', 'rgba(255, 204, 0, 0.4)');
+        } else if(d && d.theme === 'purple') {
+            root.style.setProperty('--red', '#af52de'); // Фіолетова небезпека
+            root.style.setProperty('--gold', '#e0b0ff');
+            root.style.setProperty('--glow', 'rgba(175, 82, 222, 0.4)');
+        }
+    }
+    loadTheme();
+
+    const P_COUNT = 6;
+    let players = [];
+    let curIdx = 0;
+    let gameInterval;
+    let timeLeft = 10;
+
+    function init() {
+        const box = document.getElementById('players-box');
+        for(let i=0; i<P_COUNT; i++) {
+            const angle = (i * 60 - 90) * (Math.PI/180);
+            const x = 190 + 130 * Math.cos(angle);
+            const y = 370 + 130 * Math.sin(angle);
+            const p = document.createElement('div');
+            p.className = `player ${i===0?'is-me':''}`;
+            p.style.left = (x - 30) + 'px';
+            p.style.top = (y - 30) + 'px';
+            p.id = `p-${i}`;
+            p.innerHTML = `<div class="avatar"></div><b>${i===0?'YOU': i+1}</b>`;
+            box.appendChild(p);
+            players.push({ id: i, x: x, y: y, angle: i*60, alive: true });
+        }
+        startCountdown();
+    }
+
+    function startCountdown() {
+        let count = 3;
+        const cd = document.getElementById('countdown');
+        const itv = setInterval(() => {
+            count--;
+            if(count === 0) cd.innerText = "ГРА!";
+            else if(count < 0) {
+                clearInterval(itv);
+                document.getElementById('start-overlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('start-overlay').style.display = 'none';
+                    startTurn();
+                }, 800);
+            } else cd.innerText = count;
+        }, 1000);
+    }
+
+    function startTurn() {
+        const survivors = players.filter(p => p.alive);
+        // Якщо залишився 1 гравець або ми померли, завершуємо
+        if (survivors.length <= 1) return finish();
+        if (!players[0].alive) return finish();
+
+        if (!players[curIdx].alive) return moveNext();
+
+        document.querySelectorAll('.player').forEach(p => p.classList.remove('active', 'target'));
+        document.getElementById(`p-${curIdx}`).classList.add('active');
+        updateGun(curIdx, curIdx);
+        resetTimer();
+
+        if (curIdx === 0) {
+            log("ТВІЙ ХІД");
+            document.getElementById('shoot-self').style.display = 'block';
+            players.forEach((p, i) => {
+                if (p.alive && i !== 0) {
+                    const el = document.getElementById(`p-${i}`);
+                    el.classList.add('target');
+                    el.onclick = () => handleAction(false, i);
+                }
+            });
+        } else {
+            document.getElementById('shoot-self').style.display = 'none';
+            log(`ГРАВЕЦЬ ${curIdx+1} ВИБИРАЄ...`);
+            setTimeout(botLogic, 1500);
+        }
+    }
+
+    function updateGun(ownerIdx, targetIdx) {
+        const owner = players[ownerIdx];
+        const target = players[targetIdx];
+        const dx = target.x - owner.x;
+        const dy = target.y - owner.y;
+        let angle = ownerIdx === targetIdx ? owner.angle : Math.atan2(dy, dx) * (180 / Math.PI);
+        const gun = document.getElementById('gun');
+        gun.style.left = (owner.x - 25) + 'px';
+        gun.style.top = (owner.y - 15) + 'px';
+        gun.style.transform = `rotate(${angle}deg) translateX(50px)`;
+    }
+
+    function handleAction(isSelf, targetId = null) {
+        clearInterval(gameInterval);
+        document.getElementById('shoot-self').style.display = 'none';
+        document.querySelectorAll('.player').forEach(p => p.onclick = null);
+
+        const targetIdx = isSelf ? curIdx : targetId;
+        updateGun(curIdx, targetIdx);
+        log("...");
+
+        setTimeout(() => {
+            const isFatal = Math.random() < 0.166;
+
+            if (isFatal) {
+                const fr = document.getElementById('frame');
+                fr.classList.add('shake-active');
+                setTimeout(() => fr.classList.remove('shake-active'), 300);
+
+                players[targetIdx].alive = false;
+                document.getElementById(`p-${targetIdx}`).classList.add('dead');
+                log("ФАТАЛЬНО!");
+
+                if (targetIdx === 0) {
+                    setTimeout(finish, 2000); // Якщо ми померли
+                    return;
+                }
+                setTimeout(moveNext, 1500);
+            } else {
+                log("ОСІЧКА.");
+                if (isSelf) setTimeout(startTurn, 1000);
+                else { curIdx = targetIdx; setTimeout(startTurn, 1000); }
+            }
+        }, 600);
+    }
+
+    function botLogic() {
+        let targets = players.filter((p, i) => p.alive && i !== curIdx);
+        if (Math.random() > 0.8 || targets.length === 0) handleAction(true);
+        else handleAction(false, targets[Math.floor(Math.random()*targets.length)].id);
+    }
+
+    function resetTimer() {
+        clearInterval(gameInterval);
+        timeLeft = 10;
+        document.getElementById('timer-val').innerText = timeLeft;
+        gameInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer-val').innerText = timeLeft;
+            if (timeLeft <= 0) handleAction(true);
+        }, 1000);
+    }
+
+    function moveNext() { curIdx = (curIdx + 1) % P_COUNT; startTurn(); }
+    function log(msg) { document.getElementById('log-msg').innerText = msg; }
+
+    function finish() { 
+        // Формуємо звіт для підсумків
+        const report = players.map(p => ({
+            name: p.id === 0 ? "ВИ (ГРАВЕЦЬ 1)" : `ГРАВЕЦЬ ${p.id+1}`,
+            role: "РУЛЕТКА",
+            status: p.alive ? "ВИЖИВ" : "ВИБУВ",
+            isAlive: p.alive
+        }));
+
+        const resultTitle = players[0].alive ? "ВИЖИВАННЯ" : "СМЕРТЬ";
+
+        localStorage.setItem('roulette_result_msg', resultTitle);
+        localStorage.setItem('roulette_report', JSON.stringify(report));
+        
+        window.location.href = "pidsumokRyletka1.html"; 
+    }
+
+    init();
+</script>
+</body>
+</html>
