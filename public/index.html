@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>COSMIC MAFIA ONLINE</title>
+    <style>
+        /* === ТВІЙ ДИЗАЙН (NEON STYLE) === */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;900&display=swap');
+
+        :root {
+            --bg: #050010;
+            --neon-blue: #00f3ff;
+            --neon-red: #ff2d55;
+            --neon-gold: #ffcc00;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            background: var(--bg);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ЕКРАНИ (СЦЕНИ) */
+        .screen {
+            display: none; /* Ховаємо всі екрани */
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1a0b2e 0%, #000 100%);
+            animation: fadeIn 0.5s ease;
+        }
+
+        .screen.active {
+            display: flex; /* Показуємо активний */
+        }
+
+        /* ЕЛЕМЕНТИ ІНТЕРФЕЙСУ */
+        h1 { text-shadow: 0 0 15px var(--neon-blue); margin-bottom: 20px; text-align: center; }
+        
+        .btn {
+            background: var(--glass);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 15px 40px;
+            font-size: 18px;
+            margin: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px var(--neon-blue);
+            transition: 0.3s;
+            width: 80%;
+            max-width: 300px;
+        }
+
+        .btn:active { transform: scale(0.95); background: var(--neon-blue); color: #000; }
+        .btn-red { border-color: var(--neon-red); color: var(--neon-red); box-shadow: 0 0 10px var(--neon-red); }
+        .btn-gold { border-color: var(--neon-gold); color: var(--neon-gold); box-shadow: 0 0 10px var(--neon-gold); }
+
+        /* ІНФОРМАЦІЯ ПРО ГРАВЦЯ */
+        .profile-bar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 12px;
+            color: #aaa;
+            z-index: 100;
+        }
+
+        /* АНІМАЦІЯ ПОШУКУ */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--neon-blue);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* ІГРОВЕ ПОЛЕ (Спрощено для тесту) */
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 90%;
+        }
+        .player-card {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border: 1px solid #fff;
+            text-align: center;
+        }
+        .my-role {
+            font-size: 24px;
+            color: var(--neon-gold);
+            margin: 20px;
+            text-shadow: 0 0 20px var(--neon-gold);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+    
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+    <div class="profile-bar">
+        ID: <span id="my-id">...</span> | 💰 <span id="my-coins">0</span>
+    </div>
+
+    <div id="screen-menu" class="screen active">
+        <h1>COSMIC MAFIA</h1>
+        <button class="btn" onclick="findGame('mafia')">ГРАТИ В МАФІЮ</button>
+        <button class="btn btn-gold" onclick="findGame('roulette')">РУЛЕТКА (100💰)</button>
+        <button class="btn btn-red">МАГАЗИН</button>
+    </div>
+
+    <div id="screen-search" class="screen">
+        <div class="loader"></div>
+        <h2>ПОШУК ГРАВЦІВ...</h2>
+        <p id="queue-status">0 / 4</p>
+        <button class="btn btn-red" onclick="location.reload()">СКАСУВАТИ</button>
+    </div>
+
+    <div id="screen-game" class="screen">
+        <div class="my-role" id="role-display">ROLE: ???</div>
+        <h3 id="game-status">ОЧІКУВАННЯ ХОДУ...</h3>
+        
+        <div class="game-grid" id="players-container"></div>
+    </div>
+
+    <script>
+        // === ЛОГІКА КЛІЄНТА ===
+        
+        // 1. З'єднання з сервером (автоматично знаходить твій сервер)
+        const socket = io();
+
+        // Емуляція Telegram ID (щоб можна було тестувати в браузері)
+        // В реальному Telegram це буде: window.Telegram.WebApp.initDataUnsafe.user.id
+        const myTgId = Math.floor(Math.random() * 1000000); 
+        const myName = "Player_" + Math.floor(Math.random() * 100);
+
+        // Елементи
+        const screens = {
+            menu: document.getElementById('screen-menu'),
+            search: document.getElementById('screen-search'),
+            game: document.getElementById('screen-game')
+        };
+
+        // Функція перемикання екранів
+        function showScreen(name) {
+            Object.values(screens).forEach(s => s.classList.remove('active'));
+            screens[name].classList.add('active');
+        }
+
+        // --- ПОДІЇ СЕРВЕРА ---
+
+        socket.on('connect', () => {
+            console.log("🟢 Підключено до сервера!");
+            // Авторизація
+            socket.emit('auth', { tgId: myTgId, username: myName });
+        });
+
+        socket.on('auth_success', (data) => {
+            document.getElementById('my-id').innerText = myName;
+            document.getElementById('my-coins').innerText = data.coins;
+        });
+
+        socket.on('queue_update', (data) => {
+            document.getElementById('queue-status').innerText = `${data.count} / ${data.max}`;
+        });
+
+        socket.on('game_start', (data) => {
+            showScreen('game');
+            renderPlayers(data.players);
+        });
+
+        socket.on('roulette_start', (data) => {
+            showScreen('game');
+            document.getElementById('role-display').innerText = "🔫 РУЛЕТКА";
+            renderPlayers(data.players);
+        });
+
+        socket.on('your_role', (role) => {
+            document.getElementById('role-display').innerText = role;
+            if(role === 'MAFIA') document.getElementById('role-display').style.color = 'red';
+            if(role === 'SHERIFF') document.getElementById('role-display').style.color = 'blue';
+        });
+
+        socket.on('phase_change', (data) => {
+            document.getElementById('game-status').innerText = data.msg;
+            // Тут додамо анімацію зміни дня/ночі
+            if(data.phase === 'NIGHT') document.body.style.background = '#000';
+            else document.body.style.background = 'radial-gradient(circle at center, #1a0b2e 0%, #000 100%)';
+        });
+
+        socket.on('error', (msg) => {
+            alert("ПОМИЛКА: " + msg);
+            location.reload();
+        });
+
+        // --- ДІЇ ГРАВЦЯ ---
+
+        function findGame(type) {
+            showScreen('search');
+            socket.emit('find_game', type);
+        }
+
+        function renderPlayers(players) {
+            const container = document.getElementById('players-container');
+            container.innerHTML = '';
+            
+            players.forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'player-card';
+                div.innerHTML = `
+                    <div style="font-size:30px">👤</div>
+                    <div>${p.name}</div>
+                `;
+                
+                // Клік по гравцю (голосування / постріл)
+                div.onclick = () => {
+                    if(p.id === socket.id) return; // Не можна стріляти в себе (поки що)
+                    socket.emit('game_action', { targetId: p.id, action: 'interact' });
+                    div.style.borderColor = 'red'; // Підсвітка вибору
+                };
+                
+                container.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
